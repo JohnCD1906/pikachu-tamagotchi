@@ -1,0 +1,11 @@
+# --- CPU / FreeRTOS ---
+CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y
+CONFIG_FREERTOS_HZ=1000
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=4096
+
+# --- C++: LovyanGFX no necesita excepciones ni RTTI ---
+CONFIG_COMPILER_CXX_EXCEPTIONS=n
+CONFIG_COMPILER_CXX_RTTI=n
+
+# --- Log un poco menos verboso en runtime ---
+CONFIG_LOG_DEFAULT_LEVEL_INFO=y

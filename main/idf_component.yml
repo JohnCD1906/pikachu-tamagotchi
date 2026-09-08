@@ -1,0 +1,4 @@
+# Dependencias gestionadas por el ESP Component Manager.
+# LovyanGFX se descarga solo al hacer `idf.py build`.
+dependencies:
+  idf: ">=5.0"
