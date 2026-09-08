@@ -22,6 +22,8 @@
 #include "input.hpp"
 #include "render.hpp"
 
+#define PIN_BUZZER 33
+
 static const char* TAG = "tama";
 
 // Estado compartido entre los dos núcleos.
@@ -31,11 +33,32 @@ static SemaphoreHandle_t g_mutex;
 // Época base para sembrar el RTC interno en el primer arranque (2024-01-01).
 static const time_t TIME_BASE = 1704067200;
 
+static void buzzer_init() {
+    ledc_timer_config_t t = { .speed_mode = LEDC_LOW_SPEED_MODE,
+        .duty_resolution = LEDC_TIMER_10_BIT, .timer_num = LEDC_TIMER_0,
+        .freq_hz = 1000, .clk_cfg = LEDC_AUTO_CLK };
+    ledc_timer_config(&t);
+    ledc_channel_config_t c = { .gpio_num = PIN_BUZZER,
+        .speed_mode = LEDC_LOW_SPEED_MODE, .channel = LEDC_CHANNEL_0,
+        .timer_sel = LEDC_TIMER_0, .duty = 0, .hpoint = 0 };
+    ledc_channel_config(&c);
+}
+static void beep(uint32_t freq, uint32_t ms) {
+    ledc_set_freq(LEDC_LOW_SPEED_MODE, LEDC_TIMER_0, freq);
+    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 512); // 50%
+    ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0);
+    vTaskDelay(pdMS_TO_TICKS(ms));
+    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 0);
+    ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0);
+}
+
 // ---------------------------------------------------------------------------
 //  Tarea de lógica (core 0)
 // ---------------------------------------------------------------------------
+
 static void logic_task(void*) {
     input_init();
+    buzzer_init();
 
     const TickType_t period = pdMS_TO_TICKS(20);   // poll ~50 Hz (botones fluidos)
     int64_t  last_save    = esp_timer_get_time();
@@ -70,6 +93,9 @@ static void logic_task(void*) {
             g_pet.mood = action_mood;
 
         xSemaphoreGive(g_mutex);
+
+            if (ev & BTN_FEED) beep(1200, 60);
+            if (ev & BTN_PLAY) beep(1600, 60);
 
         // Guardado periódico en NVS (aquí, en core 0, para no frenar el render).
         if (now_us - last_save > 30000000) {   // cada 30 s
